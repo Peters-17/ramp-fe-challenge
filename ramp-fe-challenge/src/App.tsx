@@ -13,6 +13,7 @@ export function App() {
   const { data: paginatedTransactions, ...paginatedTransactionsUtils } = usePaginatedTransactions()
   const { data: transactionsByEmployee, ...transactionsByEmployeeUtils } = useTransactionsByEmployee()
   const [isLoading, setIsLoading] = useState(false)
+  const [selectedFilter, setSelectedFilter] = useState(EMPTY_EMPLOYEE)
 
   const transactions = useMemo(
     () => paginatedTransactions?.data ?? transactionsByEmployee ?? null,
@@ -24,9 +25,12 @@ export function App() {
     transactionsByEmployeeUtils.invalidateData()
 
     await employeeUtils.fetchAll()
-    await paginatedTransactionsUtils.fetchAll()
 
     setIsLoading(false)
+
+    await paginatedTransactionsUtils.fetchAll()
+
+    
   }, [employeeUtils, paginatedTransactionsUtils, transactionsByEmployeeUtils])
 
   const loadTransactionsByEmployee = useCallback(
@@ -65,7 +69,13 @@ export function App() {
               return
             }
 
-            await loadTransactionsByEmployee(newValue.id)
+            if (newValue === EMPTY_EMPLOYEE) {
+              await loadAllTransactions()
+            } else {
+              await loadTransactionsByEmployee(newValue.id)
+            }
+
+            setSelectedFilter(newValue)
           }}
         />
 
@@ -73,11 +83,15 @@ export function App() {
 
         <div className="RampGrid">
           <Transactions transactions={transactions} />
-
-          {transactions !== null && (
+          {/* Handle emptyid case */}
+          {paginatedTransactions?.nextPage !== null &&
+            transactions !== null &&
+            selectedFilter === EMPTY_EMPLOYEE && (
             <button
               className="RampButton"
-              disabled={paginatedTransactionsUtils.loading}
+              disabled={paginatedTransactionsUtils.loading || 
+                paginatedTransactions?.nextPage == null || 
+                transactionsByEmployee?.length === 0}
               onClick={async () => {
                 await loadAllTransactions()
               }}
